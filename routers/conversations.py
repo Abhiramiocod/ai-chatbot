@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from database import SessionLocal
 from models import Conversation, Message
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/conversations", tags=["Conversations"])
 
@@ -14,10 +15,18 @@ def get_db():
     finally:
         db.close()
 
+class ConversationCreate(BaseModel):
+    title: str
+
 
 @router.post("")
-def create_conversation(db: Session = Depends(get_db)):
-    conversation = Conversation(title="New Chat")
+def create_conversation(
+    payload: ConversationCreate,
+    db: Session = Depends(get_db),
+):
+    conversation = Conversation(
+        title=payload.title
+    )
 
     db.add(conversation)
     db.commit()

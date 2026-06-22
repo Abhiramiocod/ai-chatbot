@@ -31,6 +31,11 @@ def get_db():
 
 @router.post("")
 def chat(req: ChatRequest, db: Session = Depends(get_db)):
+    print("=" * 50)
+    print("Chat request received")
+    print(f"Conversation ID: {req.conversation_id}")
+    print(f"User Message: {req.message}")
+
     conversation = (
         db.query(Conversation)
         .filter(Conversation.id == req.conversation_id)
@@ -38,10 +43,13 @@ def chat(req: ChatRequest, db: Session = Depends(get_db)):
     )
 
     if not conversation:
+        print("Conversation not found")
         raise HTTPException(
             status_code=404,
             detail="Conversation not found",
         )
+
+    print("Saving user message")
 
     db.add(
         Message(
@@ -52,15 +60,25 @@ def chat(req: ChatRequest, db: Session = Depends(get_db)):
     )
     db.commit()
 
+    print("User message saved")
+
     try:
+        print("Calling Gemini...")
+
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=req.message,
         )
+
+        print("Gemini response received")
+
     except Exception as exc:
+        print(f"Gemini error: {exc}")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     ai_reply = response.text
+
+    print(f"AI Reply: {ai_reply[:100]}")
 
     db.add(
         Message(
@@ -70,9 +88,15 @@ def chat(req: ChatRequest, db: Session = Depends(get_db)):
         )
     )
 
+    print("Saving assistant message")
+
     if conversation.title == "New Chat":
         conversation.title = req.message[:50]
 
     db.commit()
+
+    print("Assistant message saved")
+    print("Returning response")
+    print("=" * 50)
 
     return {"reply": ai_reply}
